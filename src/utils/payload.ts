@@ -54,10 +54,7 @@ export async function buildPayload(
       PRODUCT_CODE: processOrder.Material,
       PRODUCT_NAME: toProductName(product),
       BATCH_NO: NA,
-      BATCH_WEIGHT: reservation._ReservationDocumentItem.reduce(
-        (sum, item) => sum + item.ResvnItmRequiredQtyInBaseUnit,
-        0,
-      ),
+      BATCH_WEIGHT: -1,
       SCHEDULE_DATE: now.toISOString(),
       INGREDIENT_LIST: [],
     };
@@ -83,6 +80,15 @@ export async function buildPayload(
 
       ingredientList.push(ingredient);
     }
+
+    if (job.INGREDIENT_LIST.length === 0) continue;
+
+    job.BATCH_WEIGHT = ingredientList.reduce((acc, item) => {
+      return (
+        acc +
+        item.INGREDIENT_LOT.reduce((sum, lot) => sum + lot.TARGET_WEIGHT, 0)
+      );
+    }, 0);
 
     jobList.push(job);
   }
