@@ -13,32 +13,28 @@ async function getSAP(url: string) {
 
   return fetch(url, {
     method: "GET",
-    headers: { Authorization: `Basic ${btoa(`${username}:${password}`)}` },
+    headers: {
+      Authorization: `Basic ${btoa(`${username}:${password}`)}`,
+      Accept: "application/json",
+    },
   });
 }
 
-let lastReservationDocumentId: string | undefined;
 async function getLastReservationId(): Promise<string> {
-  if (lastReservationDocumentId) {
-    return lastReservationDocumentId;
-  }
-
   const filename = "last-reservation.txt";
 
   if (existsSync(filename)) {
     const contents = await readFile(filename, { encoding: "utf-8" });
-    lastReservationDocumentId = contents.trim() || "0";
-  } else {
-    lastReservationDocumentId = "0";
+    return contents.trim() || "0";
   }
 
-  return lastReservationDocumentId;
+  return "0";
 }
 
 async function setLastReservationId(reservationId?: string): Promise<void> {
   console.log("Setting last reservation ID:", reservationId);
 
-  lastReservationDocumentId = reservationId ?? "0";
+  const lastReservationDocumentId = reservationId ?? "0";
   writeFileSync("last-reservation.txt", lastReservationDocumentId);
 }
 
@@ -144,7 +140,9 @@ async function getProcessOrder(id: string): Promise<SAPProcessOrder | null> {
   const url =
     `${baseUrl}/sap/opu/odata/sap/API_PROCESS_ORDER_2_SRV/A_ProcessOrder_2` +
     `('${id}')` +
-    `?$select=ProcessOrder,Material`;
+    `?$select=Material`;
+
+  console.log("Process order URL:", url);
 
   const response = await getSAP(url);
 
@@ -252,6 +250,8 @@ async function scheduleJob(
   }
 
   const payload = await buildPayload(reservations);
+
+  console.log("Payload:", payload);
 
   const fetch = (...args: any[]): any => (
     console.log("Fetching Scale API:", args[0]),
