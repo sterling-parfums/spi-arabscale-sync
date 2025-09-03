@@ -10,9 +10,7 @@ const app = express();
 
 async function scheduleJob(
   reservations: SAPReservationDocument[],
-): Promise<Response> {
-  console.log("Scheduling job with scale API");
-
+): Promise<Response | null> {
   const scaleApiUrl = process.env.SCALE_API_URL;
 
   if (!scaleApiUrl) {
@@ -20,6 +18,10 @@ async function scheduleJob(
   }
 
   const payload = await buildPayload(reservations);
+
+  if (payload.JOB_LIST.length === 0) {
+    return null;
+  }
 
   const fetch = (...args: any[]): any => (
     console.log("Fetching Scale API:", args[0]),
@@ -42,6 +44,16 @@ app.post("/api/sync", async (req, res) => {
 
   const reservations = await getReservations();
   const response = await scheduleJob(reservations);
+
+  if (response === null) {
+    res.status(200).send("No new jobs to schedule");
+    return;
+  }
+
+  if (!response.ok) {
+    res.status(500).send("Failed to schedule job");
+    return;
+  }
 
   const body = await response.json();
 
