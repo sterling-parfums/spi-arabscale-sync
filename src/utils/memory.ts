@@ -15,8 +15,6 @@ export async function getLastReservationId(): Promise<string> {
 export async function setLastReservationId(
   reservationId?: string,
 ): Promise<void> {
-  console.log("Setting last reservation ID:", reservationId);
-
   const lastReservationDocumentId = reservationId ?? "0";
   writeFileSync("last-reservation.txt", lastReservationDocumentId);
 }

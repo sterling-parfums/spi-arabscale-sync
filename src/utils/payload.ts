@@ -1,5 +1,10 @@
 import { getProcessOrder } from "./process-orders";
-import { getProductName } from "./products";
+import {
+  getProduct,
+  getProductName,
+  isDispensable,
+  toProductName,
+} from "./products";
 import type { SAPReservationDocument } from "./reservations";
 
 export type Payload = { JOB_LIST: JobList };
@@ -27,25 +32,27 @@ export type Ingredient = {
 export async function buildPayload(
   reservations: SAPReservationDocument[],
 ): Promise<Payload> {
-  console.log("Building payload for scale API");
-
   const payload: Payload = { JOB_LIST: [] };
   const jobList = payload.JOB_LIST;
   const NA = "N/A" as const;
   const now = new Date();
 
   for (const reservation of reservations) {
-    console.log("Processing reservation:", reservation.Reservation);
-
     const processOrder = await getProcessOrder(reservation.OrderID);
     if (!processOrder) continue;
 
-    const materialName = await getProductName(processOrder.Material);
+    const product = await getProduct(processOrder.Material);
+
+    if (product === null) {
+      throw new Error(
+        `Product not found for material code: ${processOrder.Material}`,
+      );
+    }
 
     const job: Job = {
       JOB_NO: reservation.Reservation,
       PRODUCT_CODE: processOrder.Material,
-      PRODUCT_NAME: materialName ?? "",
+      PRODUCT_NAME: toProductName(product),
       BATCH_NO: NA,
       BATCH_WEIGHT: reservation._ReservationDocumentItem.reduce(
         (sum, item) => sum + item.ResvnItmRequiredQtyInBaseUnit,
@@ -57,12 +64,12 @@ export async function buildPayload(
 
     const ingredientList = job.INGREDIENT_LIST;
     for (const item of reservation._ReservationDocumentItem) {
-      console.log("Processing reservation item:", item.Product);
+      const product = await getProduct(item.Product);
+      if (!isDispensable(product)) continue;
 
-      const productName = await getProductName(item.Product);
       const ingredient: Ingredient = {
         INGREDIENT_CODE: item.Product,
-        INGREDIENT_NAME: productName ?? "",
+        INGREDIENT_NAME: toProductName(product),
         INGREDIENT_LOT: [
           {
             LOT_NO: NA,
