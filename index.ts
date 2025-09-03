@@ -1,6 +1,6 @@
-require("dotenv").config();
+import "dotenv/config";
 import express from "express";
-import { writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 const app = express();
@@ -24,16 +24,22 @@ async function getLastReservationId(): Promise<string> {
   }
 
   const filename = "last-reservation.txt";
-  const contents = await readFile(filename, { encoding: "utf-8" });
 
-  lastReservationDocumentId = contents.trim() || "0";
+  if (existsSync(filename)) {
+    const contents = await readFile(filename, { encoding: "utf-8" });
+    lastReservationDocumentId = contents.trim() || "0";
+  } else {
+    lastReservationDocumentId = "0";
+  }
 
   return lastReservationDocumentId;
 }
 
 async function setLastReservationId(reservationId?: string): Promise<void> {
-  lastReservationDocumentId = reservationId;
-  writeFileSync("last-reservation.txt", reservationId ?? "0");
+  console.log("Setting last reservation ID:", reservationId);
+
+  lastReservationDocumentId = reservationId ?? "0";
+  writeFileSync("last-reservation.txt", lastReservationDocumentId);
 }
 
 type SAPReservationDocument = {
@@ -46,11 +52,16 @@ type SAPReservationDocument = {
   }>;
 };
 async function getReservations(): Promise<SAPReservationDocument[]> {
+  console.log("Getting reservations from SAP");
+
   const lastReservation = await getLastReservationId();
+
+  console.log("Last reservation ID:", lastReservation);
+
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
   let nextUrl =
     `ReservationDocument` +
-    `?$filter=OrderID ne null and Reservation gt ${lastReservation}` +
+    `?$filter=OrderID ne null and Reservation gt '${lastReservation}'` +
     "&$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
     "&$select=Reservation,OrderID";
 
@@ -65,18 +76,26 @@ async function getReservations(): Promise<SAPReservationDocument[]> {
 
     const body = await response.json();
 
+    console.log(
+      `Fetched ${body.value.length} reservations, next link: ${body["@odata.nextLink"]}`,
+    );
+
+    if (!body.value || body.value.length === 0) break;
+
     docs.push(...body.value);
 
     nextUrl = body["@odata.nextLink"];
   }
 
+  console.log(`Total reservations fetched: ${docs.length}`);
+
   if (docs.length === 0) return docs;
 
-  docs.sort((a, b) => a.Reservation.localeCompare(b.Reservation));
+  docs.sort((a, b) => Number(a.Reservation) - Number(b.Reservation));
   const lastDoc = docs[docs.length - 1];
   await setLastReservationId(lastDoc?.Reservation);
 
-  return docs;
+  return docs.slice(0, 1);
 }
 
 type SAPProduct = {
@@ -88,6 +107,8 @@ type SAPProduct = {
   };
 };
 async function getProductName(id: string): Promise<string | null> {
+  console.log("Getting product name for ID:", id);
+
   if (productNameCache[id]) {
     return productNameCache[id];
   }
@@ -117,6 +138,8 @@ type SAPProcessOrder = {
   TotalQuantity: string;
 };
 async function getProcessOrder(id: string): Promise<SAPProcessOrder | null> {
+  console.log("Getting process order for ID:", id);
+
   const baseUrl = process.env.SAP_API_URL;
   const url =
     `${baseUrl}/sap/opu/odata/sap/API_PROCESS_ORDER_2_SRV/A_ProcessOrder_2` +
@@ -126,6 +149,9 @@ async function getProcessOrder(id: string): Promise<SAPProcessOrder | null> {
   const response = await getSAP(url);
 
   if (!response.ok) {
+    console.error(
+      `Failed to fetch process order ${id}: ${response.statusText}`,
+    );
     return null;
   }
 
@@ -158,12 +184,16 @@ type ScalePayload = {
 async function buildPayload(
   reservations: SAPReservationDocument[],
 ): Promise<ScalePayload> {
+  console.log("Building payload for scale API");
+
   const payload: ScalePayload = { JOB_LIST: [] };
   const jobList = payload.JOB_LIST;
   const NA = "N/A" as const;
   const now = new Date();
 
   for (const reservation of reservations) {
+    console.log("Processing reservation:", reservation.Reservation);
+
     const processOrder = await getProcessOrder(reservation.OrderID);
     if (!processOrder) continue;
 
@@ -184,6 +214,8 @@ async function buildPayload(
 
     const ingredientList = job.INGREDIENT_LIST;
     for (const item of reservation._ReservationDocumentItem) {
+      console.log("Processing reservation item:", item.Product);
+
       const productName = await getProductName(item.Product);
       const ingredient: ScalePayload["JOB_LIST"][0]["INGREDIENT_LIST"][0] = {
         INGREDIENT_CODE: item.Product,
@@ -211,6 +243,8 @@ async function buildPayload(
 async function scheduleJob(
   reservations: SAPReservationDocument[],
 ): Promise<Response> {
+  console.log("Scheduling job with scale API");
+
   const scaleApiUrl = process.env.SCALE_API_URL;
 
   if (!scaleApiUrl) {
@@ -219,6 +253,15 @@ async function scheduleJob(
 
   const payload = await buildPayload(reservations);
 
+  const fetch = (...args: any[]): any => (
+    console.log("Fetching Scale API:", args[0]),
+    {
+      ok: true,
+      json: () => ({
+        Success: true,
+      }),
+    }
+  );
   return fetch(scaleApiUrl, { method: "POST", body: JSON.stringify(payload) });
 }
 
@@ -228,9 +271,12 @@ app.post("/api/sync", async (req, res) => {
 
   const body = await response.json();
 
-  if (body.Success) return res.status(200);
+  if (body.Success) {
+    res.status(200).send();
+    return;
+  }
 
-  return res.status(500);
+  res.status(500).send();
 });
 
 const PORT = process.env.PORT || 3000;
