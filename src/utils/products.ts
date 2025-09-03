@@ -1,20 +1,36 @@
 import { getSAP } from "./sap";
 
-const productNameCache: Record<string, string> = {};
+const productCache: Record<string, SAPProduct> = {};
 
 type SAPProduct = {
   d: {
     Product: string;
+    ProductGroup: string;
     to_Description: {
-      ProductDescription: string;
+      results: Array<{
+        ProductDescription: string;
+      }>;
     };
   };
 };
 export async function getProductName(id: string): Promise<string | null> {
-  console.log("Getting product name for ID:", id);
+  if (productCache[id]) {
+    return toProductName(productCache[id]);
+  }
 
-  if (productNameCache[id]) {
-    return productNameCache[id];
+  const product = await getProduct(id);
+  if (!product) {
+    return null;
+  }
+
+  productCache[id] = product;
+
+  return toProductName(productCache[id]);
+}
+
+export async function getProduct(id: string): Promise<SAPProduct | null> {
+  if (productCache[id]) {
+    return productCache[id];
   }
 
   const baseUrl = process.env.SAP_API_URL;
@@ -22,7 +38,7 @@ export async function getProductName(id: string): Promise<string | null> {
     `${baseUrl}/sap/opu/odata/sap/API_PRODUCT_SRV/A_Product` +
     `('${id}')` +
     `?$expand=to_Description` +
-    `&$select=to_Description/ProductDescription`;
+    `&$select=Product,ProductGroup,to_Description/ProductDescription`;
 
   const response = await getSAP(url);
 
@@ -31,7 +47,21 @@ export async function getProductName(id: string): Promise<string | null> {
   }
 
   const product = (await response.json()) as SAPProduct;
-  productNameCache[id] = product.d.to_Description.ProductDescription;
+  productCache[id] = product;
 
-  return productNameCache[id];
+  return productCache[id];
+}
+
+export function toProductName(product: SAPProduct | null): string {
+  if (!product) return "";
+  return product.d.to_Description.results[0]?.ProductDescription;
+}
+
+export function isDispensable(product: SAPProduct | null): boolean {
+  if (!product) return false;
+
+  return (
+    product.d.ProductGroup.startsWith("1CHM") ||
+    product.d.ProductGroup.startsWith("1OIL")
+  );
 }
