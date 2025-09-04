@@ -1,10 +1,4 @@
-import { getProcessOrder } from "./process-orders";
-import {
-  getProduct,
-  getProductName,
-  isDispensable,
-  toProductName,
-} from "./products";
+import { getProduct, isDispensable, toProductName } from "./products";
 import type { SAPReservationDocument } from "./reservations";
 
 export type Payload = { JOB_LIST: JobList };
@@ -38,23 +32,13 @@ export async function buildPayload(
   const now = new Date();
 
   for (const reservation of reservations) {
-    const processOrder = await getProcessOrder(reservation.OrderID);
-    if (!processOrder) continue;
-
-    const product = await getProduct(processOrder.Material);
-
-    if (product === null) {
-      throw new Error(
-        `Product not found for material code: ${processOrder.Material}`,
-      );
-    }
-
+    // TODO: Add material name and code on job
     const job: Job = {
       JOB_NO: reservation.Reservation,
-      PRODUCT_CODE: processOrder.Material,
-      PRODUCT_NAME: toProductName(product),
+      PRODUCT_CODE: NA,
+      PRODUCT_NAME: NA,
       BATCH_NO: NA,
-      BATCH_WEIGHT: -1,
+      BATCH_WEIGHT: 0,
       SCHEDULE_DATE: now.toISOString(),
       INGREDIENT_LIST: [],
     };
