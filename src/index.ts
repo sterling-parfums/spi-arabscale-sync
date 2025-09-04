@@ -35,6 +35,8 @@ async function scheduleJob(
   return fetch(scaleApiUrl, { method: "POST", body: JSON.stringify(payload) });
 }
 
+app.get("/", (_, res) => res.send(new Date()));
+
 app.post("/api/sync", async (req, res) => {
   const secret = req.headers["x-sync-secret"];
   if (!secret || secret !== process.env.SYNC_SECRET) {
