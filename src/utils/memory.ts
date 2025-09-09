@@ -1,20 +1,22 @@
-import { existsSync, writeFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 
-export async function getLastReservationId(): Promise<string> {
-  const filename = "last-reservation.txt";
+const timestampFilename = "last-sync.txt";
 
-  if (existsSync(filename)) {
-    const contents = await readFile(filename, { encoding: "utf-8" });
-    return contents.trim() || "0";
+export async function getLastSyncTime(): Promise<Date> {
+  if (!existsSync(timestampFilename)) {
+    const date = new Date(0);
+    await writeFile(timestampFilename, date.toISOString());
+    return date;
   }
 
-  return "0";
+  const contents = await readFile(timestampFilename, { encoding: "utf-8" });
+  return new Date(contents.trim());
 }
 
-export async function setLastReservationId(
-  reservationId?: string,
-): Promise<void> {
-  const lastReservationDocumentId = reservationId ?? "0";
-  writeFileSync("last-reservation.txt", lastReservationDocumentId);
+export async function updateLastSyncTime(): Promise<Date> {
+  const now = new Date();
+  await writeFile("last-updated-at.txt", now.toISOString());
+
+  return now;
 }

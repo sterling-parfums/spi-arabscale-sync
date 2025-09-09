@@ -26,8 +26,17 @@ app.use((req, res, next) => {
 app.get("/", (_, res) => res.send(new Date()));
 
 app.post("/api/sync", async (_, res) => {
+  console.log("⌛️ Fetching reservations from SAP...");
   const reservations = await getReservations();
+  console.log(`✅ Fetched ${reservations.length} reservations from SAP`);
+
+  console.log("⌛️ Building jobs payload...");
   const jobsPayload = await buildJobsPayload(reservations);
+  console.log(`✅ Built jobs payload with ${jobsPayload.JOB_LIST.length} jobs`);
+
+  if (process.env.DRY_RUN) {
+    return res.status(200).json(jobsPayload);
+  }
 
   if (jobsPayload.JOB_LIST.length === null) {
     res.status(200).send("No new jobs to schedule");
@@ -60,5 +69,6 @@ app.post("/api/sync", async (_, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log("⏰", new Date().toLocaleString());
+  console.log(`🚀 Server is running on port ${PORT}`);
 });
