@@ -35,8 +35,8 @@ export async function buildPayload(
     // TODO: Add material name and code on job
     const job: Job = {
       JOB_NO: reservation.Reservation,
-      PRODUCT_CODE: NA,
-      PRODUCT_NAME: NA,
+      PRODUCT_CODE: "0000",
+      PRODUCT_NAME: "Name Unavailable",
       BATCH_NO: NA,
       BATCH_WEIGHT: 0,
       SCHEDULE_DATE: now.toISOString(),
