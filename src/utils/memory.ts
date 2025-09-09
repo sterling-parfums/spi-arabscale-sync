@@ -16,7 +16,7 @@ export async function getLastSyncTime(): Promise<Date> {
 
 export async function updateLastSyncTime(): Promise<Date> {
   const now = new Date();
-  await writeFile("last-updated-at.txt", now.toISOString());
+  await writeFile(timestampFilename, now.toISOString());
 
   return now;
 }
