@@ -4,6 +4,7 @@ import { getSAP } from "./sap";
 export type SAPReservationDocument = {
   Reservation: string;
   OrderID: string;
+  YY1_OrderMaterial_RDH: string;
   _ReservationDocumentItem: Array<{
     Product: string;
     ResvnItmRequiredQtyInBaseUnit: number;
@@ -29,7 +30,7 @@ export async function getReservations(): Promise<SAPReservationDocument[]> {
     `ReservationDocument` +
     `?$filter=${buildFilter(filter)}` +
     "&$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
-    "&$select=Reservation,OrderID";
+    "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH";
 
   const docs: SAPReservationDocument[] = [];
 

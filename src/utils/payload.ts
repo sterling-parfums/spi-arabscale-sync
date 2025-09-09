@@ -33,10 +33,13 @@ export async function buildJobsPayload(
 
   for (const reservation of reservations) {
     // TODO: Add material name and code on job
+    const product = reservation.YY1_OrderMaterial_RDH
+      ? await getProduct(reservation.YY1_OrderMaterial_RDH)
+      : null;
     const job: Job = {
       JOB_NO: reservation.Reservation,
-      PRODUCT_CODE: "0000",
-      PRODUCT_NAME: "Name Unavailable",
+      PRODUCT_CODE: product ? product.d.Product : "0000",
+      PRODUCT_NAME: product ? toProductName(product) : NA,
       BATCH_NO: NA,
       BATCH_WEIGHT: 0,
       SCHEDULE_DATE: now.toISOString(),
