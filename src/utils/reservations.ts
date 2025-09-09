@@ -21,7 +21,7 @@ export async function getReservations(): Promise<SAPReservationDocument[]> {
       `CreationDateTime gt ${lastSyncISO}`,
       `LastChangeDateTime gt ${lastSyncISO}`,
     ],
-    ["IssuingOrReceivingStorageLoc eq 'CS01'"],
+    ["startswith(IssuingOrReceivingStorageLoc,'CS')"],
   ];
 
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
