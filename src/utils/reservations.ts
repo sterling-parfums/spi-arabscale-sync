@@ -16,7 +16,7 @@ export async function getReservations(): Promise<SAPReservationDocument[]> {
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
   let nextUrl =
     `ReservationDocument` +
-    `?$filter= and Reservation gt '${lastReservation}'` +
+    `?$filter=GoodsMovementType eq '311' and Reservation gt '${lastReservation}'` +
     "&$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
     "&$select=Reservation,OrderID";
 
