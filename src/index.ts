@@ -23,15 +23,6 @@ async function scheduleJob(
     return null;
   }
 
-  const fetch = (...args: any[]): any => (
-    console.log("Fetching Scale API:", args[0]),
-    {
-      ok: true,
-      json: () => ({
-        Success: true,
-      }),
-    }
-  );
   return fetch(scaleApiUrl, { method: "POST", body: JSON.stringify(payload) });
 }
 
