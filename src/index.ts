@@ -34,7 +34,7 @@ app.post("/api/sync", async (_, res) => {
   const jobsPayload = await buildJobsPayload(reservations);
   console.log(`✅ Built jobs payload with ${jobsPayload.JOB_LIST.length} jobs`);
 
-  if (process.env.DRY_RUN) {
+  if (process.env.DRY_RUN === "1") {
     return res.status(200).json(jobsPayload);
   }
 
@@ -43,6 +43,7 @@ app.post("/api/sync", async (_, res) => {
     return;
   }
 
+  console.log("⌛️ Scheduling jobs to Scale API...");
   const response = await fetch(process.env.SCALE_API_URL!, {
     method: "POST",
     headers: {
@@ -61,6 +62,7 @@ app.post("/api/sync", async (_, res) => {
 
   if (body.Success) {
     res.status(200).json({ response: body, jobs: jobsPayload });
+    console.log("✅ Successfully scheduled jobs to Scale API");
     return;
   }
 
