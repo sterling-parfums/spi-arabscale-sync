@@ -23,7 +23,7 @@ export type Ingredient = {
     UNIT: string;
   }>;
 };
-export async function buildPayload(
+export async function buildJobsPayload(
   reservations: SAPReservationDocument[],
 ): Promise<Payload> {
   const payload: Payload = { JOB_LIST: [] };
