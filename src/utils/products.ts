@@ -6,6 +6,7 @@ type SAPProduct = {
   d: {
     Product: string;
     ProductGroup: string;
+    ProductType: string;
     to_Description: {
       results: Array<{
         ProductDescription: string;
@@ -38,7 +39,7 @@ export async function getProduct(id: string): Promise<SAPProduct | null> {
     `${baseUrl}/sap/opu/odata/sap/API_PRODUCT_SRV/A_Product` +
     `('${id}')` +
     `?$expand=to_Description` +
-    `&$select=Product,ProductGroup,to_Description/ProductDescription`;
+    `&$select=Product,ProductGroup,ProductType,to_Description/ProductDescription`;
 
   const response = await getSAP(url);
 
@@ -61,7 +62,9 @@ export function isDispensable(product: SAPProduct | null): boolean {
   if (!product) return false;
 
   return (
-    product.d.ProductGroup.startsWith("1CHM") ||
-    product.d.ProductGroup.startsWith("1OIL")
+    (product.d.ProductGroup.startsWith("1CHM") ||
+      product.d.ProductGroup.startsWith("1OIL") ||
+      product.d.ProductGroup.startsWith("1OTH")) &&
+    product.d.ProductType === "ROH"
   );
 }
