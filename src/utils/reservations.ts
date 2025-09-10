@@ -17,12 +17,13 @@ export async function getReservations(): Promise<SAPReservationDocument[]> {
   console.log("ℹ️ Last sync time:", lastSyncISO);
 
   const filter = [
-    ["GoodsMovementType eq '311'"],
     [
       `CreationDateTime gt ${lastSyncISO}`,
       `LastChangeDateTime gt ${lastSyncISO}`,
     ],
+    ["GoodsMovementType eq '311'"],
     ["startswith(IssuingOrReceivingStorageLoc,'CS')"],
+    ["YY1_OrderMaterial_RDH ne ''"],
   ];
 
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
