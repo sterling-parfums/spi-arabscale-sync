@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { getReservations } from "./utils/reservations";
 import { buildJobsPayload } from "./utils/payload";
+import morgan from "morgan";
 
 const REQUIRED_ENVS = ["SYNC_SECRET", "SCALE_API_URL"];
 for (const env of REQUIRED_ENVS) {
@@ -12,6 +13,12 @@ for (const env of REQUIRED_ENVS) {
 }
 
 const app = express();
+
+app.use(
+  morgan(
+    "[:date[clf] :method :url :status :res[content-length] - :response-time ms",
+  ),
+);
 
 app.use((req, res, next) => {
   const secret = req.headers["x-sync-secret"];
