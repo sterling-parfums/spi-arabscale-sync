@@ -38,12 +38,13 @@ app.post("/api/sync", async (_, res) => {
     return res.status(200).json(jobsPayload);
   }
 
-  if (jobsPayload.JOB_LIST.length === null) {
+  if (jobsPayload.JOB_LIST.length === 0) {
     res.status(200).send("No new jobs to schedule");
     return;
   }
 
   console.log("⌛️ Scheduling jobs to Scale API...");
+  console.log(JSON.stringify(jobsPayload, null, 2));
   const response = await fetch(process.env.SCALE_API_URL!, {
     method: "POST",
     headers: {
@@ -53,8 +54,8 @@ app.post("/api/sync", async (_, res) => {
   });
 
   if (!response.ok) {
-    res.status(500).send("Failed to schedule job");
     console.error("Failed to schedule job:", response.statusText);
+    res.status(500).json({ error: response.statusText, response });
     return;
   }
 
