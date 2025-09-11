@@ -62,9 +62,9 @@ export function isDispensable(product: SAPProduct | null): boolean {
   if (!product) return false;
 
   return (
-    (product.d.ProductGroup.startsWith("1CHM") ||
-      product.d.ProductGroup.startsWith("1OIL") ||
-      product.d.ProductGroup.startsWith("1OTH")) &&
-    product.d.ProductType === "ROH"
+    product.d.ProductGroup.startsWith("1CHM") ||
+    product.d.ProductGroup.startsWith("1OIL") ||
+    (product.d.ProductGroup.startsWith("1OTH") &&
+      product.d.ProductType === "ROH")
   );
 }
