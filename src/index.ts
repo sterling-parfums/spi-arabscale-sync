@@ -1,6 +1,10 @@
 import "dotenv/config";
 import express from "express";
-import { getReservations } from "./utils/reservations";
+import {
+  getLatestReservations,
+  getReservation,
+  SAPReservationDocument,
+} from "./utils/reservations";
 import { buildJobsPayload } from "./utils/payload";
 import morgan from "morgan";
 
@@ -16,7 +20,7 @@ const app = express();
 
 app.use(
   morgan(
-    "[:date[clf] :method :url :status :res[content-length] - :response-time ms",
+    "[:date[clf]] :method :url :status :res[content-length] - :response-time ms",
   ),
 );
 
@@ -34,7 +38,7 @@ app.get("/", (_, res) => res.send(new Date()));
 
 app.post("/api/sync", async (_, res) => {
   console.log("⌛️ Fetching reservations from SAP...");
-  const reservations = await getReservations();
+  const reservations = await getLatestReservations();
   console.log(`✅ Fetched ${reservations.length} reservations from SAP`);
 
   console.log("⌛️ Building jobs payload...");
@@ -75,6 +79,58 @@ app.post("/api/sync", async (_, res) => {
   }
 
   res.status(500).json({ response: body });
+});
+
+app.post("/api/sync/:reservationId", async (req, res) => {
+  const reservationId = req.params.reservationId as string;
+  if (isNaN(parseInt(reservationId))) {
+    return res.status(400).send("Invalid reservation ID");
+  }
+
+  console.log(`⌛️ Fetching reservation ${reservationId} from SAP...`);
+  const reservation = await getReservation(reservationId);
+
+  if (!reservation) {
+    return res.status(404).send("Reservation not found");
+  }
+  console.log(`✅ Fetched reservation ${reservationId} from SAP`);
+
+  console.log("⌛️ Building job payload...");
+  const payload = await buildJobsPayload([reservation]);
+  console.log(`✅ Built job payload with ${payload.JOB_LIST.length} jobs`);
+
+  if (payload.JOB_LIST.length === 0) {
+    return res.status(200).send("No jobs to schedule");
+  }
+
+  if (process.env.DRY_RUN === "1") {
+    return res.status(200).json(payload);
+  }
+
+  console.log("⌛️ Scheduling job to Scale API...");
+  const response = await fetch(process.env.SCALE_API_URL!, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    console.error("Failed to schedule job:", response.statusText);
+    return res.status(500).json({ error: response.statusText, response });
+  }
+  console.log("✅ Successfully triggered job to Scale API");
+
+  const body = await response.json();
+
+  if (!body.Success) {
+    console.log("❌ Job scheduling failed on Scale server");
+    return res.status(500).json({ response: body });
+  }
+
+  console.log("✅ Successfully scheduled job to Scale API");
+  return res.status(200).json({ response: body, jobs: payload });
 });
 
 const PORT = process.env.PORT || 3000;

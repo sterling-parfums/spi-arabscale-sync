@@ -11,7 +11,9 @@ export type SAPReservationDocument = {
     BaseUnit: string;
   }>;
 };
-export async function getReservations(): Promise<SAPReservationDocument[]> {
+export async function getLatestReservations(): Promise<
+  SAPReservationDocument[]
+> {
   const lastSync = await getLastSyncTime();
   const lastSyncISO = lastSync.toISOString();
   console.log("ℹ️ Last sync time:", lastSyncISO);
@@ -58,6 +60,31 @@ export async function getReservations(): Promise<SAPReservationDocument[]> {
   if (docs.length === 0) return docs;
 
   return docs;
+}
+
+export async function getReservation(
+  id: string,
+): Promise<SAPReservationDocument | null> {
+  const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
+  const url =
+    baseUrl +
+    `/${id}` +
+    "&$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
+    "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH";
+
+  const response = await getSAP(url);
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch reservation: ${response.statusText}`);
+  }
+
+  const body = await response.json();
+
+  return body;
 }
 
 function buildFilter(filters: string[][]): string {
