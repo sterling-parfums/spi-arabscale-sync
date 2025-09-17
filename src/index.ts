@@ -55,7 +55,7 @@ app.post("/api/sync", async (_, res) => {
   }
 
   console.log("⌛️ Scheduling jobs to Scale API...");
-  console.log(JSON.stringify(jobsPayload, null, 2));
+  console.log(JSON.stringify(jobsPayload));
   const response = await fetch(process.env.SCALE_API_URL!, {
     method: "POST",
     headers: {
