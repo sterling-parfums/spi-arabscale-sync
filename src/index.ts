@@ -1,10 +1,11 @@
 import "dotenv/config";
-import express from "express";
-import {
-  getLatestReservations,
-  getReservation,
-  SAPReservationDocument,
-} from "./utils/reservations";
+import express, {
+  ErrorRequestHandler,
+  NextFunction,
+  Request,
+  Response,
+} from "express";
+import { getLatestReservations, getReservation } from "./utils/reservations";
 import { buildJobsPayload } from "./utils/payload";
 import morgan from "morgan";
 
@@ -56,6 +57,7 @@ app.post("/api/sync", async (_, res) => {
 
   console.log("⌛️ Scheduling jobs to Scale API...");
   console.log(JSON.stringify(jobsPayload));
+
   const response = await fetch(process.env.SCALE_API_URL!, {
     method: "POST",
     headers: {
@@ -132,6 +134,15 @@ app.post("/api/sync/:reservationId", async (req, res) => {
   console.log("✅ Successfully scheduled job to Scale API");
   return res.status(200).json({ response: body, jobs: payload });
 });
+
+app.use(((err, _, res) => {
+  console.error(err);
+
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+  });
+}) as ErrorRequestHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
