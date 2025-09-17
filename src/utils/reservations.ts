@@ -69,7 +69,7 @@ export async function getReservation(
   const url =
     baseUrl +
     `/${id}` +
-    "&$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
+    "?$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
     "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH";
 
   const response = await getSAP(url);
