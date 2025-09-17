@@ -68,7 +68,7 @@ export async function getReservation(
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
   const url =
     baseUrl +
-    `/${id}` +
+    `/ReservationDocument/${id}` +
     "?$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
     "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH";
 
