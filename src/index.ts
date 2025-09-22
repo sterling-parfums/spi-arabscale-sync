@@ -42,6 +42,10 @@ app.post("/api/sync", async (_, res) => {
   const reservations = await getLatestReservations();
   console.log(`✅ Fetched ${reservations.length} reservations from SAP`);
 
+  if (reservations.length === 0) {
+    return res.status(200).send("No new reservations to process");
+  }
+
   console.log("⌛️ Building jobs payload...");
   const jobsPayload = await buildJobsPayload(reservations);
   console.log(`✅ Built jobs payload with ${jobsPayload.JOB_LIST.length} jobs`);
