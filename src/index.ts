@@ -138,7 +138,7 @@ app.post("/api/sync/:reservationId", async (req, res) => {
   return res.status(200).json({ response: body, jobs: payload });
 });
 
-app.use(((err, _, res) => {
+app.use(((err, _req, res, _next) => {
   console.error(err);
 
   res.status(500).json({
