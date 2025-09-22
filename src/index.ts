@@ -75,7 +75,10 @@ app.post("/api/sync", async (_, res) => {
   const body = await response.json();
 
   if (body.Success) {
-    res.status(200).json({ response: body, jobs: jobsPayload });
+    res.status(200).json({
+      response: body,
+      jobs: jobsPayload.JOB_LIST.map((j) => j.JOB_NO),
+    });
     console.log("✅ Successfully scheduled jobs to Scale API");
     return;
   }
