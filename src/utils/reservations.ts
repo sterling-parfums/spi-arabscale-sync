@@ -66,11 +66,17 @@ export async function getReservation(
   id: string,
 ): Promise<SAPReservationDocument | null> {
   const baseUrl = `${process.env.SAP_API_URL}/sap/opu/odata4/sap/api_reservation_document/srvd_a2x/sap/apireservationdocument/0001`;
+  const filters = [
+    ["GoodsMovementType eq '311'"],
+    ["startswith(IssuingOrReceivingStorageLoc,'CS')"],
+    ["YY1_OrderMaterial_RDH ne ''"],
+  ];
   const url =
     baseUrl +
     `/ReservationDocument/${id}` +
     "?$expand=_ReservationDocumentItem($select=Product,ResvnItmRequiredQtyInBaseUnit,BaseUnit)" +
-    "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH";
+    "&$select=Reservation,OrderID,YY1_OrderMaterial_RDH" +
+    `&$filter=${buildFilter(filters)}`;
 
   const response = await getSAP(url);
 
