@@ -83,3 +83,10 @@ export async function buildJobsPayload(
 
   return payload;
 }
+
+/**
+ * Splits the payloads into multiple payloads where each payload has one job.
+ */
+export function splitPayload(payload: Payload): Payload[] {
+  return payload.JOB_LIST.map((job) => ({ JOB_LIST: [job] }));
+}

@@ -6,7 +6,7 @@ import express, {
   Response,
 } from "express";
 import { getLatestReservations, getReservation } from "./utils/reservations";
-import { buildJobsPayload } from "./utils/payload";
+import { buildJobsPayload, splitPayload } from "./utils/payload";
 import morgan from "morgan";
 
 const REQUIRED_ENVS = ["SYNC_SECRET", "SCALE_API_URL"];
@@ -58,32 +58,41 @@ app.post("/api/sync", async (_, res) => {
   console.log("⌛️ Scheduling jobs to Scale API...");
   console.log(JSON.stringify(jobsPayload.JOB_LIST.map((j) => j.JOB_NO)));
 
-  const response = await fetch(process.env.SCALE_API_URL!, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(jobsPayload),
-  });
+  const jobsPayloads = splitPayload(jobsPayload);
+  const payloadResponses = [];
 
-  if (!response.ok) {
-    console.error("Failed to schedule job:", response.statusText);
-    res.status(500).json({ error: response.statusText, response });
-    return;
-  }
-
-  const body = await response.json();
-
-  if (body.Success) {
-    res.status(200).json({
-      response: body,
-      jobs: jobsPayload.JOB_LIST.map((j) => j.JOB_NO),
+  for (const payload of jobsPayloads) {
+    const response = await fetch(process.env.SCALE_API_URL!, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
-    console.log("✅ Successfully scheduled jobs to Scale API");
-    return;
+
+    if (!response.ok) {
+      console.error(
+        `❌ Failed to schedule job(${payload.JOB_LIST[0].JOB_NO}):`,
+        response.statusText,
+      );
+
+      payloadResponses.push({
+        job: payload.JOB_LIST[0].JOB_NO,
+        status: response.status,
+        error: response.statusText,
+      });
+      continue;
+    }
+
+    const body = await response.json();
+
+    payloadResponses.push({
+      job: payload.JOB_LIST[0].JOB_NO,
+      status: response.status,
+      success: body.Success,
+      message: body.Message,
+    });
   }
 
-  res.status(500).json({ response: body });
+  return res.status(200).json({ responses: payloadResponses });
 });
 
 app.post("/api/sync/:reservationId", async (req, res) => {
