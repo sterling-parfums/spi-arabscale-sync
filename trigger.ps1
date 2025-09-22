@@ -1,0 +1,2 @@
+"$((Get-Date).ToString('yyyy-MM-dd HH:mm:ss')) `n$(Invoke-RestMethod -Uri 'http://localhost:3002/api/sync' -Method POST -Headers @{ 'X-Sync-Secret' = '61035033890cd528ecf0d128759ac583' } | ConvertTo-Json -Depth 10 -Compress)`n"  | Out-File -FilePath "C:\Users\Administrator\container-tracking\spi-arabscale-sync\trigger.log" -Append
+exit
