@@ -2,3 +2,5 @@
 node_modules
 dist
 last-sync.txt
+
+.DS_Store
