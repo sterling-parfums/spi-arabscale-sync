@@ -141,6 +141,7 @@ app.patch(
       UPDATE dbo.JOB_HEADER
       SET
         JobStatus = 'Scheduled',
+        ModifiedBy = 'SPI Backoffice',
         ModifiedOn = GETDATE()
       WHERE JobNo = @jobNo;
     `);
