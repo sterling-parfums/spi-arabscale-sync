@@ -10,11 +10,12 @@ import { getLatestReservations, getReservation } from "./utils/reservations";
 import { buildJobsPayload, splitPayload } from "./utils/payload";
 import morgan from "morgan";
 import { getDbConnection, sql } from "./utils/db";
+import { logger } from "./utils/logger";
 
 const REQUIRED_ENVS = ["SYNC_SECRET", "BACKOFFICE_SECRET", "SCALE_API_URL"];
 for (const env of REQUIRED_ENVS) {
   if (!process.env[env]) {
-    console.error(`❌ Missing required environment variable: ${env}`);
+    logger.error(`Missing required environment variable: ${env}`);
     process.exit(1);
   }
 }
@@ -90,6 +91,11 @@ function requireSecret(headerName: string, expectedSecret: string) {
 app.use(
   morgan(
     "[:date[clf]] :method :url :status :res[content-length] - :response-time ms",
+    {
+      stream: {
+        write: (message) => logger.info(message.trimEnd()),
+      },
+    },
   ),
 );
 app.use(express.static(STATIC_ASSETS_PATH));
@@ -107,14 +113,14 @@ app.get(
       return res.status(400).send("JobNo is required");
     }
 
-    console.log(`⌛️ Fetching JOB_HEADER for JobNo ${jobNo}...`);
+    logger.info(`Fetching JOB_HEADER for JobNo ${jobNo}...`);
 
     const job = await getBackofficeJob(jobNo);
     if (!job) {
       return res.status(404).send("JOB_HEADER not found");
     }
 
-    console.log(`✅ Fetched JOB_HEADER for JobNo ${jobNo}`);
+    logger.info(`Fetched JOB_HEADER for JobNo ${jobNo}`);
     return res.status(200).json(job);
   },
 );
@@ -128,9 +134,7 @@ app.patch(
       return res.status(400).send("JobNo is required");
     }
 
-    console.log(
-      `⌛️ Updating JOB_HEADER status to Scheduled for JobNo ${jobNo}...`,
-    );
+    logger.info(`Updating JOB_HEADER status to Scheduled for JobNo ${jobNo}...`);
 
     const db = await getDbConnection();
     const result = await db.request().input("jobNo", sql.VarChar, jobNo).query(`
@@ -150,7 +154,7 @@ app.patch(
       return res.status(404).send("JOB_HEADER not found");
     }
 
-    console.log(`✅ Updated JOB_HEADER status for JobNo ${jobNo}`);
+    logger.info(`Updated JOB_HEADER status for JobNo ${jobNo}`);
     return res.status(200).json(job);
   },
 );
@@ -159,19 +163,17 @@ app.post(
   "/api/sync",
   requireSecret("x-sync-secret", process.env.SYNC_SECRET!),
   async (_, res) => {
-    console.log("⌛️ Fetching reservations from SAP...");
+    logger.info("Fetching reservations from SAP...");
     const reservations = await getLatestReservations();
-    console.log(`✅ Fetched ${reservations.length} reservations from SAP`);
+    logger.info(`Fetched ${reservations.length} reservations from SAP`);
 
     if (reservations.length === 0) {
       return res.status(200).send("No new reservations to process");
     }
 
-    console.log("⌛️ Building jobs payload...");
+    logger.info("Building jobs payload...");
     const jobsPayload = await buildJobsPayload(reservations);
-    console.log(
-      `✅ Built jobs payload with ${jobsPayload.JOB_LIST.length} jobs`,
-    );
+    logger.info(`Built jobs payload with ${jobsPayload.JOB_LIST.length} jobs`);
 
     if (process.env.DRY_RUN === "1") {
       return res.status(200).json(jobsPayload);
@@ -182,8 +184,8 @@ app.post(
       return;
     }
 
-    console.log("⌛️ Scheduling jobs to Scale API...");
-    console.log(JSON.stringify(jobsPayload.JOB_LIST.map((j) => j.JOB_NO)));
+    logger.info("Scheduling jobs to Scale API...");
+    logger.info("Scheduling job numbers", jobsPayload.JOB_LIST.map((j) => j.JOB_NO));
 
     const jobsPayloads = splitPayload(jobsPayload);
     const payloadResponses = [];
@@ -196,8 +198,8 @@ app.post(
       });
 
       if (!response.ok) {
-        console.error(
-          `❌ Failed to schedule job(${payload.JOB_LIST[0].JOB_NO}):`,
+        logger.error(
+          `Failed to schedule job(${payload.JOB_LIST[0].JOB_NO}):`,
           response.statusText,
         );
 
@@ -232,17 +234,17 @@ app.post(
       return res.status(400).send("Invalid reservation ID");
     }
 
-    console.log(`⌛️ Fetching reservation ${reservationId} from SAP...`);
+    logger.info(`Fetching reservation ${reservationId} from SAP...`);
     const reservation = await getReservation(reservationId);
 
     if (!reservation) {
       return res.status(404).send("Reservation not found");
     }
-    console.log(`✅ Fetched reservation ${reservationId} from SAP`);
+    logger.info(`Fetched reservation ${reservationId} from SAP`);
 
-    console.log("⌛️ Building job payload...");
+    logger.info("Building job payload...");
     const payload = await buildJobsPayload([reservation]);
-    console.log(`✅ Built job payload with ${payload.JOB_LIST.length} jobs`);
+    logger.info(`Built job payload with ${payload.JOB_LIST.length} jobs`);
 
     if (payload.JOB_LIST.length === 0) {
       return res.status(200).send("No jobs to schedule");
@@ -252,7 +254,7 @@ app.post(
       return res.status(200).json(payload);
     }
 
-    console.log("⌛️ Scheduling job to Scale API...");
+    logger.info("Scheduling job to Scale API...");
     const response = await fetch(process.env.SCALE_API_URL!, {
       method: "POST",
       headers: {
@@ -262,25 +264,25 @@ app.post(
     });
 
     if (!response.ok) {
-      console.error("Failed to schedule job:", response.statusText);
+      logger.error("Failed to schedule job:", response.statusText);
       return res.status(500).json({ error: response.statusText, response });
     }
-    console.log("✅ Successfully triggered job to Scale API");
+    logger.info("Successfully triggered job to Scale API");
 
     const body = await response.json();
 
     if (!body.Success) {
-      console.log("❌ Job scheduling failed on Scale server");
+      logger.error("Job scheduling failed on Scale server");
       return res.status(500).json({ response: body });
     }
 
-    console.log("✅ Successfully scheduled job to Scale API");
+    logger.info("Successfully scheduled job to Scale API");
     return res.status(200).json({ response: body, jobs: payload });
   },
 );
 
 app.use(((err, _req, res, _next) => {
-  console.error(err);
+  logger.error("Unhandled error", err);
 
   res.status(500).json({
     success: false,
@@ -290,6 +292,6 @@ app.use(((err, _req, res, _next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("⏰", new Date().toLocaleString());
-  console.log(`🚀 Server is running on port ${PORT}`);
+  logger.info(`Server started at ${new Date().toLocaleString()}`);
+  logger.info(`Server is running on port ${PORT}`);
 });

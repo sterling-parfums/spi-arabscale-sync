@@ -1,4 +1,5 @@
 import { getSAP } from "./sap";
+import { logger } from "./logger";
 
 export type SAPProcessOrder = {
   Material: string;
@@ -15,9 +16,7 @@ export async function getProcessOrder(
   const response = await getSAP(url);
 
   if (!response.ok) {
-    console.error(
-      `Failed to fetch process order ${id}: ${response.statusText}`,
-    );
+    logger.error(`Failed to fetch process order ${id}: ${response.statusText}`);
     return null;
   }
 

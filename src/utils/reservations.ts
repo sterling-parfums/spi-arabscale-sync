@@ -1,4 +1,5 @@
 import { getLastSyncTime, updateLastSyncTime } from "./memory";
+import { logger } from "./logger";
 import { getSAP } from "./sap";
 
 export type SAPReservationDocument = {
@@ -16,7 +17,7 @@ export async function getLatestReservations(): Promise<
 > {
   const lastSync = await getLastSyncTime();
   const lastSyncISO = lastSync.toISOString();
-  console.log("ℹ️ Last sync time:", lastSyncISO);
+  logger.info("Last sync time", lastSyncISO);
 
   const filter = [
     [
@@ -37,9 +38,9 @@ export async function getLatestReservations(): Promise<
 
   const docs: SAPReservationDocument[] = [];
 
-  console.log("⌛️ Updating last sync time...");
+  logger.info("Updating last sync time...");
   const updatedTime = await updateLastSyncTime();
-  console.log("✅ Updated last sync time to:", updatedTime.toISOString());
+  logger.info("Updated last sync time to", updatedTime.toISOString());
 
   while (nextUrl) {
     const response = await getSAP(baseUrl + "/" + nextUrl);
