@@ -35,10 +35,13 @@ main {
   width: min(1100px, calc(100vw - 20px));
   margin: 10px auto;
   padding: 14px;
+  min-height: calc(100vh - 20px);
   border: 2px solid var(--border-strong);
   border-radius: 4px;
   background: linear-gradient(180deg, var(--panel) 0%, var(--panel-strong) 100%);
   box-shadow: 0 8px 24px rgba(21, 32, 43, 0.12);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 h1 {
@@ -103,13 +106,16 @@ button:disabled {
 }
 
 #job-header {
-  min-height: 420px;
+  height: min(680px, calc(100vh - 150px));
   padding: 12px;
   border: 1px solid var(--border-strong);
   border-radius: 3px;
   background: var(--surface);
   overflow: auto;
   color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .placeholder,
@@ -122,6 +128,7 @@ button:disabled {
 .job-header-view {
   display: grid;
   gap: 12px;
+  min-height: 0;
 }
 
 .job-header-title-row {
@@ -222,6 +229,9 @@ button:disabled {
 .ingredients {
   border: 1px solid var(--border);
   background: #ffffff;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
 }
 
 .ingredients-header {
@@ -236,6 +246,8 @@ button:disabled {
 
 .ingredients-table-wrap {
   overflow: auto;
+  min-height: 0;
+  max-height: 320px;
 }
 
 .ingredients-table {
@@ -253,6 +265,9 @@ button:disabled {
 }
 
 .ingredients-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -332,6 +347,10 @@ button:disabled {
     padding: 10px;
     border-width: 0;
     border-radius: 0;
+  }
+
+  #job-header {
+    height: calc(100vh - 126px);
   }
 
   .controls {
