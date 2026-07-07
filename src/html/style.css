@@ -124,9 +124,18 @@ button:disabled {
   gap: 12px;
 }
 
-.job-header-actions {
+.job-header-title-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.job-header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .job-header-meta {
@@ -206,6 +215,64 @@ button:disabled {
   word-break: break-word;
 }
 
+.metric-value-right {
+  text-align: right;
+}
+
+.ingredients {
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.ingredients-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ingredients-table-wrap {
+  overflow: auto;
+}
+
+.ingredients-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ingredients-table th,
+.ingredients-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #d5dde5;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ingredients-table th {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: #eef3f7;
+}
+
+.ingredients-table td {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.ingredients-table th:nth-child(3),
+.ingredients-table td:nth-child(3) {
+  text-align: right;
+}
+
 .modal[hidden] {
   display: none;
 }
@@ -273,6 +340,16 @@ button:disabled {
 
   .job-header-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .job-header-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .job-header-title-group {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .modal-actions {

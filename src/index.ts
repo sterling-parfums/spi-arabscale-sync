@@ -23,6 +23,58 @@ const app = express();
 const HOME_PAGE_PATH = path.join(process.cwd(), "src/html/index.html");
 const STATIC_ASSETS_PATH = path.join(process.cwd(), "src/html");
 
+async function getBackofficeJob(jobNo: string) {
+  const db = await getDbConnection();
+  const headerResult = await db.request().input("jobNo", sql.VarChar, jobNo)
+    .query(`
+      SELECT
+        Id,
+        ScheduleDate,
+        JobNo,
+        ProductId,
+        ProductCode,
+        ProductName,
+        FormulaId,
+        FormulaName,
+        ProdWt,
+        ProdWt_G,
+        FinishProdWt,
+        FinishProdWt_G,
+        UnitSymbol,
+        Prod_Qty,
+        Remarks,
+        JobStatus,
+        Reason
+      FROM dbo.JOB_HEADER
+      WHERE JobNo = @jobNo;
+    `);
+
+  if (headerResult.recordset.length === 0) {
+    return null;
+  }
+
+  const header = headerResult.recordset[0];
+  const ingredientsResult = await db
+    .request()
+    .input("hdrId", sql.Int, header.Id)
+    .query(`
+      SELECT
+        IngredientCode,
+        IngredientName,
+        TargetWt,
+        ScaleNo
+      FROM dbo.JOB_DETAILS
+      WHERE HdrId = @hdrId
+        AND [Type] = 0
+      ORDER BY SeqNo, Id;
+    `);
+
+  return {
+    header,
+    ingredients: ingredientsResult.recordset,
+  };
+}
+
 function requireSecret(headerName: string, expectedSecret: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     const secret = req.headers[headerName];
@@ -57,36 +109,13 @@ app.get(
 
     console.log(`⌛️ Fetching JOB_HEADER for JobNo ${jobNo}...`);
 
-    const db = await getDbConnection();
-    const result = await db.request().input("jobNo", sql.VarChar, jobNo).query(`
-      SELECT
-        Id,
-        ScheduleDate,
-        JobNo,
-        ProductId,
-        ProductCode,
-        ProductName,
-        FormulaId,
-        FormulaName,
-        ProdWt,
-        ProdWt_G,
-        FinishProdWt,
-        FinishProdWt_G,
-        UnitSymbol,
-        Prod_Qty,
-        Remarks,
-        JobStatus,
-        Reason
-      FROM dbo.JOB_HEADER
-      WHERE JobNo = @jobNo;
-    `);
-
-    if (result.recordset.length === 0) {
+    const job = await getBackofficeJob(jobNo);
+    if (!job) {
       return res.status(404).send("JOB_HEADER not found");
     }
 
     console.log(`✅ Fetched JOB_HEADER for JobNo ${jobNo}`);
-    return res.status(200).json(result.recordset[0]);
+    return res.status(200).json(job);
   },
 );
 
@@ -110,35 +139,19 @@ app.patch(
         JobStatus = 'Scheduled',
         ModifiedOn = GETDATE()
       WHERE JobNo = @jobNo;
-
-      SELECT
-        Id,
-        ScheduleDate,
-        JobNo,
-        ProductId,
-        ProductCode,
-        ProductName,
-        FormulaId,
-        FormulaName,
-        ProdWt,
-        ProdWt_G,
-        FinishProdWt,
-        FinishProdWt_G,
-        UnitSymbol,
-        Prod_Qty,
-        Remarks,
-        JobStatus,
-        Reason
-      FROM dbo.JOB_HEADER
-      WHERE JobNo = @jobNo;
     `);
 
-    if (result.recordset.length === 0) {
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).send("JOB_HEADER not found");
+    }
+
+    const job = await getBackofficeJob(jobNo);
+    if (!job) {
       return res.status(404).send("JOB_HEADER not found");
     }
 
     console.log(`✅ Updated JOB_HEADER status for JobNo ${jobNo}`);
-    return res.status(200).json(result.recordset[0]);
+    return res.status(200).json(job);
   },
 );
 

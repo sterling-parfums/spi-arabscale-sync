@@ -42,9 +42,66 @@ function formatValue(key, value) {
   return String(value);
 }
 
+function formatWeight(value) {
+  const formatted = formatValue("weight", value);
+  return formatted === "N/A" ? formatted : formatted + " KG";
+}
+
 function renderMessage(message) {
   jobHeaderOutput.innerHTML =
     '<p class="message">' + escapeHtml(message) + "</p>";
+}
+
+function renderIngredients(ingredients) {
+  if (!ingredients.length) {
+    return (
+      '<section class="ingredients">' +
+      '<div class="ingredients-header">Ingredients</div>' +
+      '<p class="message">No ingredients found for this job.</p>' +
+      "</section>"
+    );
+  }
+
+  const rows = ingredients
+    .map(
+      (ingredient) =>
+        "<tr>" +
+        "<td>" +
+        escapeHtml(formatValue("IngredientCode", ingredient.IngredientCode)) +
+        "</td>" +
+        "<td>" +
+        escapeHtml(formatValue("IngredientName", ingredient.IngredientName)) +
+        "</td>" +
+        "<td>" +
+        escapeHtml(formatWeight(ingredient.TargetWt)) +
+        "</td>" +
+        "<td>" +
+        escapeHtml(formatValue("ScaleNo", ingredient.ScaleNo)) +
+        "</td>" +
+        "</tr>",
+    )
+    .join("");
+
+  return (
+    '<section class="ingredients">' +
+    '<div class="ingredients-header">Ingredients</div>' +
+    '<div class="ingredients-table-wrap">' +
+    '<table class="ingredients-table">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>Ingredient Code</th>" +
+    "<th>Ingredient Name</th>" +
+    "<th>Target Wt</th>" +
+    "<th>Scale No</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>" +
+    rows +
+    "</tbody>" +
+    "</table>" +
+    "</div>" +
+    "</section>"
+  );
 }
 
 function closeConfirmModal(confirmed) {
@@ -66,17 +123,15 @@ function openConfirmModal() {
   });
 }
 
-function renderJobHeader(jobHeader) {
+function renderJobHeader(payload) {
+  const { header: jobHeader, ingredients = [] } = payload;
   const isPending =
     String(jobHeader.JobStatus || "").trim().toLowerCase() === "pending";
   const metrics = [
     {
       label: "Job Weight",
-      value: formatValue("ProdWt", jobHeader.ProdWt),
-    },
-    {
-      label: "Schedule Date",
-      value: formatValue("ScheduleDate", jobHeader.ScheduleDate),
+      value: formatWeight(jobHeader.ProdWt),
+      className: "metric-value-right",
     },
   ]
     .map(
@@ -85,7 +140,9 @@ function renderJobHeader(jobHeader) {
         '<p class="metric-label">' +
         escapeHtml(metric.label) +
         "</p>" +
-        '<p class="metric-value">' +
+        '<p class="metric-value ' +
+        metric.className +
+        '">' +
         escapeHtml(metric.value) +
         "</p>" +
         "</div>",
@@ -95,14 +152,21 @@ function renderJobHeader(jobHeader) {
   jobHeaderOutput.innerHTML =
     '<div class="job-header-view">' +
     '<div class="job-header-meta">' +
+    '<div class="job-header-title-row">' +
+    '<div class="job-header-title-group">' +
     '<h2 class="job-header-title">Job ' +
     escapeHtml(formatValue("JobNo", jobHeader.JobNo)) +
     "</h2>" +
-    '<p class="job-header-code">' +
-    escapeHtml(formatValue("ProductCode", jobHeader.ProductCode)) +
-    "</p>" +
     '<p class="job-header-status">' +
     escapeHtml(formatValue("JobStatus", jobHeader.JobStatus)) +
+    "</p>" +
+    "</div>" +
+    '<button id="scheduleButton" type="button"' +
+    (isPending ? "" : " disabled") +
+    ">Schedule</button>" +
+    "</div>" +
+    '<p class="job-header-code">' +
+    escapeHtml(formatValue("ProductCode", jobHeader.ProductCode)) +
     "</p>" +
     '<p class="job-header-subtitle">' +
     escapeHtml(formatValue("ProductName", jobHeader.ProductName)) +
@@ -111,11 +175,7 @@ function renderJobHeader(jobHeader) {
     '<div class="job-header-metrics">' +
     metrics +
     "</div>" +
-    '<div class="job-header-actions">' +
-    '<button id="scheduleButton" type="button"' +
-    (isPending ? "" : " disabled") +
-    ">Schedule</button>" +
-    "</div>" +
+    renderIngredients(ingredients) +
     "</div>";
 
   document.getElementById("scheduleButton").addEventListener("click", scheduleJob);
