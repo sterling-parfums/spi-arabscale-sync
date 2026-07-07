@@ -5,9 +5,12 @@ const confirmModal = document.getElementById("confirmModal");
 const confirmBackdrop = document.getElementById("confirmBackdrop");
 const confirmCancelButton = document.getElementById("confirmCancel");
 const confirmApproveButton = document.getElementById("confirmApprove");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmMessage = document.getElementById("confirmMessage");
 
 let currentJobNo = "";
 let resolveConfirmation = null;
+let currentJobStatus = "";
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => {
@@ -115,9 +118,12 @@ function closeConfirmModal(confirmed) {
   resolver(confirmed);
 }
 
-function openConfirmModal() {
+function openConfirmModal(title, message, confirmLabel) {
   return new Promise((resolve) => {
     resolveConfirmation = resolve;
+    confirmTitle.textContent = title;
+    confirmMessage.textContent = message;
+    confirmApproveButton.textContent = confirmLabel;
     confirmModal.hidden = false;
     confirmApproveButton.focus();
   });
@@ -125,8 +131,11 @@ function openConfirmModal() {
 
 function renderJobHeader(payload) {
   const { header: jobHeader, ingredients = [] } = payload;
-  const isPending =
-    String(jobHeader.JobStatus || "").trim().toLowerCase() === "pending";
+  const normalizedStatus = String(jobHeader.JobStatus || "").trim().toLowerCase();
+  const canSchedule = normalizedStatus === "pending";
+  const canUnschedule = normalizedStatus === "scheduled";
+  const actionLabel = canUnschedule ? "Unschedule" : "Schedule";
+  const canUpdateStatus = canSchedule || canUnschedule;
   const metrics = [
     {
       label: "Job Weight",
@@ -162,8 +171,10 @@ function renderJobHeader(payload) {
     "</p>" +
     "</div>" +
     '<button id="scheduleButton" type="button"' +
-    (isPending ? "" : " disabled") +
-    ">Schedule</button>" +
+    (canUpdateStatus ? "" : " disabled") +
+    ">" +
+    actionLabel +
+    "</button>" +
     "</div>" +
     '<p class="job-header-code">' +
     escapeHtml(formatValue("ProductCode", jobHeader.ProductCode)) +
@@ -178,6 +189,7 @@ function renderJobHeader(payload) {
     renderIngredients(ingredients) +
     "</div>";
 
+  currentJobStatus = normalizedStatus;
   document.getElementById("scheduleButton").addEventListener("click", scheduleJob);
 }
 
@@ -241,7 +253,14 @@ async function scheduleJob() {
     return;
   }
 
-  const confirmed = await openConfirmModal();
+  const isUnschedule = currentJobStatus === "scheduled";
+  const nextStatus = isUnschedule ? "Pending" : "Scheduled";
+  const actionLabel = isUnschedule ? "Unschedule" : "Schedule";
+  const confirmed = await openConfirmModal(
+    "Confirm Update",
+    "Change this job status to " + nextStatus + "?",
+    actionLabel,
+  );
   if (!confirmed) {
     return;
   }
@@ -258,7 +277,7 @@ async function scheduleJob() {
     const response = await fetch(
       "/api/backoffice/job-header/" +
         encodeURIComponent(currentJobNo) +
-        "/schedule",
+        (isUnschedule ? "/unschedule" : "/schedule"),
       {
         method: "PATCH",
         headers: {

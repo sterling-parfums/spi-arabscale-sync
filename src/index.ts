@@ -76,6 +76,35 @@ async function getBackofficeJob(jobNo: string) {
   };
 }
 
+async function updateBackofficeJobStatus(jobNo: string, status: string) {
+  const currentJob = await getBackofficeJob(jobNo);
+  if (!currentJob) {
+    return null;
+  }
+
+  const currentStatus = String(currentJob.header.JobStatus || "").trim().toLowerCase();
+  const nextStatus = status.trim().toLowerCase();
+  const isValidTransition =
+    (currentStatus === "pending" && nextStatus === "scheduled") ||
+    (currentStatus === "scheduled" && nextStatus === "pending");
+
+  if (!isValidTransition) {
+    return currentJob;
+  }
+
+  const db = await getDbConnection();
+  await db.request().input("jobNo", sql.VarChar, jobNo).query(`
+      UPDATE dbo.JOB_HEADER
+      SET
+        JobStatus = '${status}',
+        ModifiedBy = 'SPI Backoffice',
+        ModifiedOn = GETDATE()
+      WHERE JobNo = @jobNo;
+    `);
+
+  return getBackofficeJob(jobNo);
+}
+
 function requireSecret(headerName: string, expectedSecret: string) {
   return (req: Request, res: Response, next: NextFunction) => {
     const secret = req.headers[headerName];
@@ -136,23 +165,36 @@ app.patch(
 
     logger.info(`Updating JOB_HEADER status to Scheduled for JobNo ${jobNo}...`);
 
-    const db = await getDbConnection();
-    const result = await db.request().input("jobNo", sql.VarChar, jobNo).query(`
-      UPDATE dbo.JOB_HEADER
-      SET
-        JobStatus = 'Scheduled',
-        ModifiedBy = 'SPI Backoffice',
-        ModifiedOn = GETDATE()
-      WHERE JobNo = @jobNo;
-    `);
-
-    if (result.rowsAffected[0] === 0) {
-      return res.status(404).send("JOB_HEADER not found");
-    }
-
-    const job = await getBackofficeJob(jobNo);
+    const job = await updateBackofficeJobStatus(jobNo, "Scheduled");
     if (!job) {
       return res.status(404).send("JOB_HEADER not found");
+    }
+    if (String(job.header.JobStatus || "").trim().toLowerCase() !== "scheduled") {
+      return res.status(409).send("Only Pending jobs can be scheduled");
+    }
+
+    logger.info(`Updated JOB_HEADER status for JobNo ${jobNo}`);
+    return res.status(200).json(job);
+  },
+);
+
+app.patch(
+  "/api/backoffice/job-header/:jobNo/unschedule",
+  requireSecret("x-backoffice-secret", process.env.BACKOFFICE_SECRET!),
+  async (req, res) => {
+    const jobNo = req.params.jobNo?.trim();
+    if (!jobNo) {
+      return res.status(400).send("JobNo is required");
+    }
+
+    logger.info(`Updating JOB_HEADER status to Pending for JobNo ${jobNo}...`);
+
+    const job = await updateBackofficeJobStatus(jobNo, "Pending");
+    if (!job) {
+      return res.status(404).send("JOB_HEADER not found");
+    }
+    if (String(job.header.JobStatus || "").trim().toLowerCase() !== "pending") {
+      return res.status(409).send("Only Scheduled jobs can be unscheduled");
     }
 
     logger.info(`Updated JOB_HEADER status for JobNo ${jobNo}`);
