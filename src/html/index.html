@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backoffice Job Header</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Backoffice Job Header</h1>
+      <div class="controls">
+        <input id="jobNo" type="text" placeholder="Enter JobNo" />
+        <button id="searchButton" type="button">Search</button>
+      </div>
+      <section id="job-header">
+        <p class="placeholder">Search for a JobNo to view its JOB_HEADER record.</p>
+      </section>
+    </main>
+    <div id="confirmModal" class="modal" hidden>
+      <div id="confirmBackdrop" class="modal-backdrop"></div>
+      <div
+        class="modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmTitle"
+        aria-describedby="confirmMessage"
+      >
+        <p id="confirmTitle" class="modal-title">Confirm Schedule</p>
+        <p id="confirmMessage" class="modal-message">
+          Change this job status to Scheduled?
+        </p>
+        <div class="modal-actions">
+          <button id="confirmCancel" type="button" class="button-secondary">
+            Cancel
+          </button>
+          <button id="confirmApprove" type="button">Schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/script.js"></script>
+  </body>
+</html>

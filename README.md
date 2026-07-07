@@ -10,6 +10,7 @@ The database connection helper lives in `src/utils/db.ts` and reads its config f
 
 Required variables:
 
+- `BACKOFFICE_SECRET`
 - `MSSQL_SERVER`
 - `MSSQL_DATABASE`
 - `MSSQL_USER`
@@ -23,3 +24,11 @@ Optional variables:
 - `MSSQL_POOL_MAX` defaults to `10`
 - `MSSQL_POOL_MIN` defaults to `0`
 - `MSSQL_POOL_IDLE_TIMEOUT_MS` defaults to `30000`
+
+## API
+
+- `GET /` serves a single-page backoffice UI for searching and scheduling job headers
+- `POST /api/sync` requires the `x-sync-secret` header
+- `POST /api/sync/:reservationId` requires the `x-sync-secret` header
+- `GET /api/backoffice/job-header/:jobNo` requires the `x-backoffice-secret` header and returns the matching `JOB_HEADER` row
+- `PATCH /api/backoffice/job-header/:jobNo/schedule` requires the `x-backoffice-secret` header, updates `JobStatus` to `Scheduled`, and returns the updated row
